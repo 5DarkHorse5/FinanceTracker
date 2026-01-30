@@ -47,7 +47,7 @@ main { max-width:1100px; margin:30px auto; padding:0 15px; }
 .cancel { background:#94a3b8; color:white; }
 .save { background:#10b981; color:white; }
 
-.add-month { margin-top:10px; background:#22c55e; color:white; border:none; border-radius:6px; cursor:pointer; padding:6px 10px; font-weight:bold; }
+.add-month { margin-top:10px; background:#22c55e; color:white; border:none; border-radius:6px; cursor:pointer; padding:6px 10px; font-weight:bold; width: 100%; }
 </style>
 </head>
 <body>
@@ -68,7 +68,6 @@ main { max-width:1100px; margin:30px auto; padding:0 15px; }
 <div id="empty" class="empty">Click "Add Debt" to start</div>
 </main>
 
-<!-- MODAL -->
 <div class="modal" id="modal">
 <div class="modal-box">
 <h2>Add Debt</h2>
@@ -105,18 +104,9 @@ document.getElementById('saveDebt').onclick = () => {
     const payments = [];
     const count = Math.ceil(total / monthly);
 
-    // Start from next month
-    const today = new Date();
-    const startMonth = today.getMonth() + 1; // next month
-    const startYear = today.getFullYear() + Math.floor(startMonth / 12);
-    const firstMonthIndex = startMonth % 12;
-
+    // Starting explicitly from January 2026
     for (let i = 0; i < count; i++) {
-        const month = firstMonthIndex + i;
-        const year = startYear + Math.floor(month / 12);
-        const monthIndex = month % 12;
-
-        const d = new Date(year, monthIndex, 1);
+        const d = new Date(2026, i, 1); // 0 is January
         payments.push({
             label: d.toLocaleString('default', { month: 'short', year: 'numeric' }),
             amount: i === count - 1 ? +(total - monthly * (count - 1)).toFixed(2) : monthly,
@@ -130,12 +120,10 @@ document.getElementById('saveDebt').onclick = () => {
     render();
 };
 
-// Save to localStorage
 function save(){ 
     localStorage.setItem('debts', JSON.stringify(debts)); 
 }
 
-// Render debts
 function render(){
     debtsDiv.innerHTML = ''; 
     empty.style.display = debts.length ? 'none' : 'block';
@@ -152,8 +140,10 @@ function render(){
         card.innerHTML = `
             <div class="card-header">
                 <strong>${debt.name}</strong>
-                <button class="done-btn">Done</button>
-                <button class="delete">Delete</button>
+                <div>
+                    <button class="done-btn">Done</button>
+                    <button class="delete">Delete</button>
+                </div>
             </div>
             <div class="card-body">
                 <div class="stat-box"><span>Total</span><span>R${debt.total.toFixed(2)}</span></div>
@@ -162,7 +152,7 @@ function render(){
                 <div class="stat-box"><span>Remaining</span><span>R${remaining.toFixed(2)}</span></div>
             </div>
             <div class="payments"></div>
-            <button class="add-month">+ Add Month</button>
+            <div style="padding: 10px;"><button class="add-month">+ Add Month</button></div>
         `;
 
         const paymentsDiv = card.querySelector('.payments');
@@ -175,54 +165,51 @@ function render(){
                 <label>
                     <input type="checkbox" ${p.paid ? 'checked' : ''}> ${p.label}
                 </label>
-                <span>R${p.amount.toFixed(2)}</span>
-                <button class="delete-month" style="margin-left:10px;padding:2px 6px;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer;">X</button>
+                <div>
+                    <span>R${p.amount.toFixed(2)}</span>
+                    <button class="delete-month" style="margin-left:10px;padding:2px 6px;background:#ef4444;color:white;border:none;border-radius:4px;cursor:pointer;">X</button>
+                </div>
             `;
 
-            // Toggle paid
             row.querySelector('input').onchange = e => { 
                 p.paid = e.target.checked; 
                 save(); 
                 render(); 
             };
 
-            // Delete month
             row.querySelector('.delete-month').onclick = () => {
-                {
-                    debt.payments.splice(i, 1);
-                    save();
-                    render();
-                }
+                debt.payments.splice(i, 1);
+                save();
+                render();
             };
 
             paymentsDiv.appendChild(row);
         });
 
-        // Done button
         card.querySelector('.done-btn').onclick = () => {
-            {
-                debts = debts.filter(d => d.id !== debt.id); 
-                save(); 
-                render();
-            }
+            debts = debts.filter(d => d.id !== debt.id); 
+            save(); 
+            render();
         };
 
-        // Delete debt button
         card.querySelector('.delete').onclick = () => {
-            {
-                debts = debts.filter(d => d.id !== debt.id); 
-                save(); 
-                render();
-            }
+            debts = debts.filter(d => d.id !== debt.id); 
+            save(); 
+            render();
         };
 
-        // Add Month button
         card.querySelector('.add-month').onclick = () => {
-            const lastPayment = debt.payments[debt.payments.length - 1];
-            const lastDate = new Date(lastPayment.label);
-            lastDate.setMonth(lastDate.getMonth() + 1);
+            let nextDate;
+            if (debt.payments.length > 0) {
+                const lastPayment = debt.payments[debt.payments.length - 1];
+                nextDate = new Date(lastPayment.label);
+                nextDate.setMonth(nextDate.getMonth() + 1);
+            } else {
+                nextDate = new Date(2026, 0, 1); // Default back to Jan 2026 if all months were deleted
+            }
+            
             debt.payments.push({
-                label: lastDate.toLocaleString('default', { month: 'short', year: 'numeric' }),
+                label: nextDate.toLocaleString('default', { month: 'short', year: 'numeric' }),
                 amount: debt.monthly, 
                 paid: false
             });
@@ -237,7 +224,6 @@ function render(){
     document.getElementById('totalRemaining').textContent = 'R' + totalRemaining.toFixed(2);
 }
 
-// Initial render
 render();
 </script>
 
